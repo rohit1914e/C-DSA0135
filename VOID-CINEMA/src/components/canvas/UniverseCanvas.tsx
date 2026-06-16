@@ -26,7 +26,7 @@ const EnvironmentManager = () => {
   return null;
 };
 
-const Scene = ({ navigate }: { navigate: any }) => {
+const Scene = () => {
   const activeSector = useStore((state) => state.activeSector);
 
   return (
@@ -55,10 +55,10 @@ const Scene = ({ navigate }: { navigate: any }) => {
   );
 };
 
-const UniverseCanvas: React.FC<{ navigate: any }> = ({ navigate }) => {
+const UniverseCanvas: React.FC = () => {
   return (
     <Canvas camera={{ position: [0, 0, 5], fov: 60 }}>
-      <Scene navigate={navigate} />
+      <Scene />
     </Canvas>
   );
 };

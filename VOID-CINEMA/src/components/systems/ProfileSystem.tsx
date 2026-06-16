@@ -32,15 +32,15 @@ const ProfileSystem: React.FC = () => {
   // Calculate Most Selected Specific Seat
   const seatCounts: Record<string, number> = {};
   bookingHistory.forEach(b => {
-    b.selectedSeats.forEach(s => {
-      seatCounts[s.id] = (seatCounts[s.id] || 0) + 1;
+    b.seats.forEach(s => {
+      seatCounts[s] = (seatCounts[s] || 0) + 1;
     });
   });
   const mostSelectedSeat = Object.keys(seatCounts).length > 0 
     ? Object.keys(seatCounts).sort((a, b) => seatCounts[b] - seatCounts[a])[0]
     : 'N/A';
 
-  const totalSeatsReserved = bookingHistory.reduce((acc, b) => acc + b.selectedSeats.length, 0);
+  const totalSeatsReserved = bookingHistory.reduce((acc, b) => acc + b.seats.length, 0);
 
   const displayUsername = profile?.username || userProfile.name;
   const displayMemberSince = profile?.created_at ? new Date(profile.created_at).getFullYear() : userProfile.memberSince;

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import UniverseCanvas from './components/canvas/UniverseCanvas';
 import HomeLayout from './components/pages/HomeLayout';
 import MovieDetailsPage from './components/pages/MovieDetailsPage';
@@ -13,7 +13,6 @@ import { ToastProvider } from './components/ui/Toast';
 
 function App() {
   const location = useLocation();
-  const navigate = useNavigate();
 
   // Scroll to top on route change
   useEffect(() => {
@@ -25,7 +24,7 @@ function App() {
       <div className="w-full min-h-screen bg-black text-white selection:bg-neon-purple selection:text-white relative">
         {/* 3D Background Layer (Persistent across routes) */}
         <div className="fixed inset-0 z-0 pointer-events-none">
-          <UniverseCanvas navigate={navigate} />
+          <UniverseCanvas />
         </div>
 
         <Routes>
