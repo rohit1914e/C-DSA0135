@@ -1,4 +1,10 @@
 import { create } from 'zustand';
+import interstellarPoster from '../assets/posters/interstellar.png';
+import spidermanPoster from '../assets/posters/spiderman.png';
+import kanguvaPoster from '../assets/posters/kanguva.png';
+import obsessionPoster from '../assets/posters/obsession.png';
+import backroomsPoster from '../assets/posters/backrooms.png';
+import michaelPoster from '../assets/posters/michael.png';
 
 export type Sector = 'explore' | 'movies' | 'tickets' | 'history' | 'profile' | 'theater';
 
@@ -104,7 +110,7 @@ const MOVIES: Movie[] = [
   {
     id: 'interstellar',
     title: 'Interstellar',
-    posterUrl: '/src/assets/posters/interstellar.png',
+    posterUrl: interstellarPoster,
     duration: '2h 49m',
     rating: 'PG-13',
     genre: ['Sci-Fi', 'Adventure', 'Drama'],
@@ -115,7 +121,7 @@ const MOVIES: Movie[] = [
   {
     id: 'spiderman-bnd',
     title: 'Spider-Man: Brand New Day',
-    posterUrl: '/src/assets/posters/spiderman.png',
+    posterUrl: spidermanPoster,
     duration: '2h 15m',
     rating: 'PG-13',
     genre: ['Action', 'Superhero', 'Adventure'],
@@ -126,7 +132,7 @@ const MOVIES: Movie[] = [
   {
     id: 'kanguva',
     title: 'Kanguva',
-    posterUrl: '/src/assets/posters/kanguva.png',
+    posterUrl: kanguvaPoster,
     duration: '2h 34m',
     rating: 'R',
     genre: ['Action', 'Fantasy', 'Historical'],
@@ -137,7 +143,7 @@ const MOVIES: Movie[] = [
   {
     id: 'obsession',
     title: 'Obsession',
-    posterUrl: '/src/assets/posters/obsession.png',
+    posterUrl: obsessionPoster,
     duration: '1h 58m',
     rating: 'R',
     genre: ['Thriller', 'Psychological', 'Mystery'],
@@ -148,7 +154,7 @@ const MOVIES: Movie[] = [
   {
     id: 'backrooms',
     title: 'Backrooms',
-    posterUrl: '/src/assets/posters/backrooms.png',
+    posterUrl: backroomsPoster,
     duration: '1h 52m',
     rating: 'R',
     genre: ['Horror', 'Mystery', 'Psychological'],
@@ -159,7 +165,7 @@ const MOVIES: Movie[] = [
   {
     id: 'michael',
     title: 'Michael',
-    posterUrl: '/src/assets/posters/michael.png',
+    posterUrl: michaelPoster,
     duration: '2h 25m',
     rating: 'PG-13',
     genre: ['Biography', 'Music', 'Drama'],
