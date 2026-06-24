@@ -1,54 +1,12 @@
 import { create } from 'zustand';
-import interstellarPoster from '../assets/posters/interstellar.png';
-import spidermanPoster from '../assets/posters/spiderman.png';
-import kanguvaPoster from '../assets/posters/kanguva.png';
-import obsessionPoster from '../assets/posters/obsession.png';
-import backroomsPoster from '../assets/posters/backrooms.png';
-import michaelPoster from '../assets/posters/michael.png';
+import { persist } from 'zustand/middleware';
+import { Movie } from '../models/Movie';
+import { Seat } from '../models/Seat';
+import { Booking } from '../models/Booking';
+import { User } from '../models/User';
+import { MOVIES } from '../data/movies';
 
 export type Sector = 'explore' | 'movies' | 'tickets' | 'history' | 'profile' | 'theater';
-
-export interface Movie {
-  id: string;
-  title: string;
-  posterUrl?: string;
-  duration: string;
-  rating: string;
-  genre: string[];
-  description: string;
-  cast: string[];
-  releaseYear: string;
-}
-
-export interface Seat {
-  id: string;
-  row: string;
-  number: number;
-  position: [number, number, number];
-  distanceToScreen: number;
-  viewingAngle: number;
-  qualityScore: number; // 0-100
-  ratingCategory: 'BEST VIEW' | 'PREMIUM' | 'GOOD' | 'BUDGET';
-  color: string;
-  status: 'available' | 'booked' | 'selected';
-}
-
-export interface Booking {
-  id: string;
-  movieId: string;
-  seats: string[];
-  date: string;
-  time: string;
-  status: 'upcoming' | 'past';
-  paymentStatus: 'pending' | 'paid';
-  totalAmount: number;
-}
-
-export interface UserProfile {
-  name: string;
-  avatar: string;
-  memberSince: string;
-}
 
 export interface ActivityLog {
   id: string;
@@ -76,6 +34,14 @@ interface CinemaState {
   selectedMovie: Movie | null;
   setSelectedMovie: (movie: Movie | null) => void;
   
+  // Theatre & Showtime State
+  selectedTheatre: { id: string; name: string } | null;
+  setSelectedTheatre: (theatre: { id: string; name: string } | null) => void;
+  selectedDate: string | null;
+  setSelectedDate: (date: string | null) => void;
+  selectedTime: string | null;
+  setSelectedTime: (time: string | null) => void;
+  
   // Seat POV State
   activePOVSeat: Seat | null;
   setActivePOVSeat: (seat: Seat | null) => void;
@@ -97,7 +63,7 @@ interface CinemaState {
   updateBookingPaymentStatus: (bookingId: string, status: 'pending' | 'paid') => void;
   
   // Profile & Stats
-  userProfile: UserProfile;
+  userProfile: User;
   stats: UserStats;
   activityTimeline: ActivityLog[];
   logActivity: (activity: Omit<ActivityLog, 'id' | 'timestamp'>) => void;
@@ -106,91 +72,23 @@ interface CinemaState {
   recordSeatQuality: (score: number, category: string) => void;
 }
 
-const MOVIES: Movie[] = [
-  {
-    id: 'interstellar',
-    title: 'Interstellar',
-    posterUrl: interstellarPoster,
-    duration: '2h 49m',
-    rating: 'PG-13',
-    genre: ['Sci-Fi', 'Adventure', 'Drama'],
-    description: 'A team of explorers travel through a wormhole in space in an attempt to ensure humanity\'s survival as Earth\'s resources are depleted.',
-    cast: ['Matthew McConaughey', 'Anne Hathaway', 'Jessica Chastain', 'Michael Caine'],
-    releaseYear: '2014',
-  },
-  {
-    id: 'spiderman-bnd',
-    title: 'Spider-Man: Brand New Day',
-    posterUrl: spidermanPoster,
-    duration: '2h 15m',
-    rating: 'PG-13',
-    genre: ['Action', 'Superhero', 'Adventure'],
-    description: 'Peter Parker faces his greatest challenge yet as a new villain emerges, forcing him to redefine what it means to be a hero in a brand new day.',
-    cast: ['Tom Holland', 'Zendaya', 'Jacob Batalon', 'Marisa Tomei'],
-    releaseYear: '2026',
-  },
-  {
-    id: 'kanguva',
-    title: 'Kanguva',
-    posterUrl: kanguvaPoster,
-    duration: '2h 34m',
-    rating: 'R',
-    genre: ['Action', 'Fantasy', 'Historical'],
-    description: 'An ancient warrior\'s epic saga of valor and vengeance spans across generations, intertwining a dark past with a modern-day conflict.',
-    cast: ['Suriya', 'Bobby Deol', 'Disha Patani'],
-    releaseYear: '2024',
-  },
-  {
-    id: 'obsession',
-    title: 'Obsession',
-    posterUrl: obsessionPoster,
-    duration: '1h 58m',
-    rating: 'R',
-    genre: ['Thriller', 'Psychological', 'Mystery'],
-    description: 'A psychological descent into madness as a man\'s fixation on a small object leads him down a dark, unescapable path.',
-    cast: ['Jake Gyllenhaal', 'Anya Taylor-Joy', 'Willem Dafoe'],
-    releaseYear: '2025',
-  },
-  {
-    id: 'backrooms',
-    title: 'Backrooms',
-    posterUrl: backroomsPoster,
-    duration: '1h 52m',
-    rating: 'R',
-    genre: ['Horror', 'Mystery', 'Psychological'],
-    description: 'A group of strangers become trapped inside an endless maze of yellow corridors where reality slowly breaks apart. Every turn leads deeper into an impossible world hiding something that should never be found.',
-    cast: ['TBA'],
-    releaseYear: '2026',
-  },
-  {
-    id: 'michael',
-    title: 'Michael',
-    posterUrl: michaelPoster,
-    duration: '2h 25m',
-    rating: 'PG-13',
-    genre: ['Biography', 'Music', 'Drama'],
-    description: 'The story of Michael Jackson\'s rise to global superstardom, exploring his music, performances, creativity, and the challenges behind the world\'s most famous entertainer.',
-    cast: ['Jaafar Jackson'],
-    releaseYear: '2026',
-  }
-];
+export const useStore = create<CinemaState>()(
+  persist(
+    (set, get) => ({
+      // Initial State
+      activeSector: 'explore',
+      isEnteringTheater: false,
+      selectedMovie: null,
+      selectedTheatre: null,
+      selectedDate: null,
+      selectedTime: null,
+      activePOVSeat: null,
+      isComparing: false,
+      recommendedSeat: null,
+      selectedSeats: [],
+      bookingHistory: [],
 
-export const useStore = create<CinemaState>((set, get) => ({
-  // Initial State
-  activeSector: 'explore',
-  isEnteringTheater: false,
-  selectedMovie: null,
-  activePOVSeat: null,
-  isComparing: false,
-  recommendedSeat: null,
-  selectedSeats: [],
-  bookingHistory: [],
-
-  userProfile: {
-    name: 'U1',
-    avatar: '',
-    memberSince: '2026',
-  },
+  userProfile: new User('u1', 'U1', '', '2026'),
   stats: {
     totalSeatsCompared: 0,
     totalTheaterExplorations: 0,
@@ -213,6 +111,10 @@ export const useStore = create<CinemaState>((set, get) => ({
   }),
   
   setSelectedMovie: (movie) => set({ selectedMovie: movie }),
+  
+  setSelectedTheatre: (theatre) => set({ selectedTheatre: theatre }),
+  setSelectedDate: (date) => set({ selectedDate: date }),
+  setSelectedTime: (time) => set({ selectedTime: time }),
   
   setActivePOVSeat: (seat) => set({ activePOVSeat: seat }),
   
@@ -290,6 +192,14 @@ export const useStore = create<CinemaState>((set, get) => ({
       }
     };
   })
+}), {
+  name: 'void-cinema-storage', // name of the item in the storage (must be unique)
+  partialize: (state) => ({ 
+    bookingHistory: state.bookingHistory, 
+    stats: state.stats, 
+    activityTimeline: state.activityTimeline,
+    userProfile: state.userProfile
+  }), // Only persist these fields to avoid saving transient UI state
 }));
 
 // We also need to export the MOVIES list so components can render them.

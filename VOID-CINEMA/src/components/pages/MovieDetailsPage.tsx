@@ -137,7 +137,7 @@ const MovieDetailsPage: React.FC = () => {
             {/* Action Button */}
             <button 
               className="w-full relative overflow-hidden group/btn px-8 py-5 bg-neon-cyan/10 border-2 border-neon-cyan hover:bg-neon-cyan transition-all duration-500 rounded-sm"
-              onClick={() => navigate(`/booking/${movie.id}`)}
+              onClick={() => navigate(`/theatres/${movie.id}`)}
             >
               <div className="relative flex items-center justify-center gap-4 z-10">
                 <span className="text-base font-black tracking-[0.3em] uppercase text-white group-hover/btn:text-black drop-shadow-md transition-colors">

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useStore, MOVIES } from '../../store/useStore';
 import { ChevronLeft, QrCode, Copy, CheckCircle2, Clock, Loader2, Check, Database } from 'lucide-react';
 import { useToast } from '../ui/Toast';
@@ -9,194 +8,6 @@ import gsap from 'gsap';
 
 type PaymentPhase = 'checkout' | 'verifying' | 'scanning' | 'creating' | 'reveal' | 'saving' | 'complete';
 
-// ── Cinematic Loading Overlay (replaces video) ──
-const CinematicLoadingOverlay: React.FC<{
-  onComplete: () => void;
-  movieTitle: string;
-}> = ({ onComplete, movieTitle }) => {
-  const [activeStep, setActiveStep] = useState(0);
-
-  const steps = [
-    { label: 'VERIFYING PAYMENT', sublabel: 'Authenticating payment token...', icon: '◆' },
-    { label: 'GENERATING TICKET', sublabel: `Encoding ${movieTitle} access pass...`, icon: '◈' },
-    { label: 'SAVING BOOKING', sublabel: 'Writing to secure database...', icon: '◇' },
-    { label: 'PREPARING CINEMA PASS', sublabel: 'Finalizing digital entry...', icon: '◆' },
-    { label: 'COMPLETE', sublabel: 'Redirecting to your tickets...', icon: '✓' },
-  ];
-
-  useEffect(() => {
-    const durations = [800, 700, 600, 500, 400]; // ms per step
-    let timeout: ReturnType<typeof setTimeout>;
-
-    const advance = (step: number) => {
-      if (step < steps.length) {
-        setActiveStep(step);
-        if (step < steps.length - 1) {
-          timeout = setTimeout(() => advance(step + 1), durations[step]);
-        } else {
-          // Final step — wait a beat then complete
-          timeout = setTimeout(onComplete, 600);
-        }
-      }
-    };
-
-    // Start after initial mount animation
-    timeout = setTimeout(() => advance(0), 400);
-
-    return () => clearTimeout(timeout);
-  }, []);
-
-  const premiumEase = [0.22, 1, 0.36, 1] as [number, number, number, number];
-  const progress = ((activeStep + 1) / steps.length) * 100;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.5 }}
-      className="fixed inset-0 z-[99999] flex items-center justify-center overflow-hidden"
-      style={{ backgroundColor: '#030308' }}
-    >
-      {/* Scan lines overlay */}
-      <div
-        className="absolute inset-0 pointer-events-none opacity-[0.04]"
-        style={{
-          backgroundImage: `repeating-linear-gradient(
-            0deg,
-            transparent,
-            transparent 2px,
-            rgba(0, 243, 255, 0.1) 2px,
-            rgba(0, 243, 255, 0.1) 4px
-          )`,
-        }}
-      />
-
-      {/* Radial glow */}
-      <div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] pointer-events-none"
-        style={{
-          background: `radial-gradient(ellipse, rgba(0, 243, 255, ${0.03 + activeStep * 0.01}), rgba(191, 0, 255, 0.02), transparent 70%)`,
-          transition: 'background 800ms ease',
-        }}
-      />
-
-      {/* Center content */}
-      <div className="relative z-10 w-full max-w-md px-8">
-
-        {/* VOID CINEMA branding */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: premiumEase }}
-          className="text-center mb-12"
-        >
-          <h1 className="text-2xl font-black tracking-[0.3em] text-white/20 uppercase">
-            VOID <span className="text-neon-cyan/30">CINEMA</span>
-          </h1>
-        </motion.div>
-
-        {/* Steps */}
-        <div className="space-y-4 mb-10">
-          {steps.map((step, i) => {
-            const isActive = i === activeStep;
-            const isComplete = i < activeStep;
-            const isPending = i > activeStep;
-
-            return (
-              <motion.div
-                key={step.label}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{
-                  opacity: isPending ? 0.15 : 1,
-                  x: 0,
-                }}
-                transition={{ duration: 0.4, delay: i * 0.08, ease: premiumEase }}
-                className="flex items-center gap-4"
-              >
-                {/* Step indicator */}
-                <div className="w-8 h-8 flex items-center justify-center shrink-0">
-                  {isComplete ? (
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="w-6 h-6 rounded-full bg-neon-cyan/20 flex items-center justify-center"
-                    >
-                      <Check size={14} className="text-neon-cyan" />
-                    </motion.div>
-                  ) : isActive ? (
-                    <div className="relative">
-                      <div className="w-6 h-6 rounded-full border border-neon-cyan/50 flex items-center justify-center">
-                        <motion.div
-                          className="w-2 h-2 rounded-full bg-neon-cyan"
-                          animate={{ scale: [1, 1.3, 1], opacity: [1, 0.6, 1] }}
-                          transition={{ duration: 1, repeat: Infinity }}
-                        />
-                      </div>
-                      <motion.div
-                        className="absolute -inset-1 rounded-full border border-neon-cyan/20"
-                        animate={{ scale: [1, 1.5], opacity: [0.5, 0] }}
-                        transition={{ duration: 1.5, repeat: Infinity }}
-                      />
-                    </div>
-                  ) : (
-                    <div className="w-6 h-6 rounded-full border border-white/10 flex items-center justify-center">
-                      <div className="w-1.5 h-1.5 rounded-full bg-white/10" />
-                    </div>
-                  )}
-                </div>
-
-                {/* Step text */}
-                <div className="flex-1 min-w-0">
-                  <div
-                    className="text-xs font-mono tracking-[0.2em] uppercase"
-                    style={{
-                      color: isActive ? '#00f3ff' : isComplete ? 'rgba(0, 243, 255, 0.5)' : 'rgba(255,255,255,0.2)',
-                      transition: 'color 400ms ease',
-                    }}
-                  >
-                    {step.label}
-                  </div>
-                  {(isActive || isComplete) && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="text-[10px] font-mono text-white/20 mt-0.5 tracking-wider"
-                    >
-                      {step.sublabel}
-                    </motion.div>
-                  )}
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
-
-        {/* Progress bar */}
-        <div className="w-full h-[2px] bg-white/5 rounded-full overflow-hidden mb-4">
-          <motion.div
-            className="h-full rounded-full"
-            style={{
-              background: 'linear-gradient(90deg, #00f3ff, #bf00ff)',
-            }}
-            initial={{ width: '0%' }}
-            animate={{ width: `${progress}%` }}
-            transition={{ duration: 0.5, ease: premiumEase }}
-          />
-        </div>
-
-        {/* Progress percentage */}
-        <div className="text-center">
-          <span className="text-[10px] font-mono tracking-[0.3em] text-white/20 uppercase">
-            {Math.round(progress)}% Complete
-          </span>
-        </div>
-      </div>
-    </motion.div>
-  );
-};
-
-// ── Main PaymentPage ──
 const PaymentPage: React.FC = () => {
   const { bookingId } = useParams<{ bookingId: string }>();
   const navigate = useNavigate();
@@ -205,7 +16,9 @@ const PaymentPage: React.FC = () => {
   
   const [timeLeft, setTimeLeft] = useState(10 * 60); // 10 minutes
   const [phase, setPhase] = useState<PaymentPhase>('checkout');
-  const [showCinematicOverlay, setShowCinematicOverlay] = useState(false);
+  const [isPlayingGenerationVideo, setIsPlayingGenerationVideo] = useState(false);
+  const [isVideoFadingOut, setIsVideoFadingOut] = useState(false);
+  const [showAudioOverlay, setShowAudioOverlay] = useState(false);
 
   const booking = bookingHistory.find(b => b.id === bookingId);
   const movie = booking ? MOVIES.find(m => m.id === booking.movieId) : null;
@@ -215,9 +28,11 @@ const PaymentPage: React.FC = () => {
   const qrScanRef = useRef<HTMLDivElement>(null);
   const particlesRef = useRef<HTMLDivElement>(null);
   const ticketRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoOverlayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!booking || (booking.paymentStatus === 'paid' && phase === 'checkout' && !showCinematicOverlay)) {
+    if (!booking || (booking.paymentStatus === 'paid' && phase === 'checkout' && !isPlayingGenerationVideo)) {
       navigate('/');
       return;
     }
@@ -227,7 +42,7 @@ const PaymentPage: React.FC = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [booking, navigate, phase, showCinematicOverlay]);
+  }, [booking, navigate, phase, isPlayingGenerationVideo]);
 
   // Phase progression (original logic — untouched)
   useEffect(() => {
@@ -308,13 +123,46 @@ const PaymentPage: React.FC = () => {
     }
   }, [phase]);
 
-  // ─── Payment complete handler (replaces video with cinematic overlay) ────
+  // ─── Video handlers ────────────────────────────────
+
   const handlePaymentComplete = () => {
-    setShowCinematicOverlay(true);
+    setIsPlayingGenerationVideo(true);
   };
 
-  const handleCinematicComplete = () => {
-    setShowCinematicOverlay(false);
+  // Auto-play video when overlay mounts
+  useEffect(() => {
+    if (isPlayingGenerationVideo && videoRef.current) {
+      console.log('VIDEO MOUNTED');
+      videoRef.current.play().then(() => {
+        console.log('VIDEO PLAY STARTED');
+        console.log('VIDEO AUDIO ENABLED');
+      }).catch((err) => {
+        console.error('VIDEO PLAY FAILED', err);
+        if (err.name === 'NotAllowedError') {
+          setShowAudioOverlay(true);
+        } else {
+          // If video fails, skip straight to ticket generation sequence
+          setIsPlayingGenerationVideo(false);
+          setPhase('verifying');
+        }
+      });
+    }
+  }, [isPlayingGenerationVideo]);
+
+  const handleVideoEnded = () => {
+    console.log('VIDEO ENDED');
+    // Fade out the video overlay, then start the ticket generation sequence
+    setIsVideoFadingOut(true);
+    setTimeout(() => {
+      setIsPlayingGenerationVideo(false);
+      setIsVideoFadingOut(false);
+      setPhase('verifying');
+    }, 800); // 800ms fade-out duration
+  };
+
+  const handleVideoError = () => {
+    console.error('Video failed to load, skipping to ticket generation.');
+    setIsPlayingGenerationVideo(false);
     setPhase('verifying');
   };
 
@@ -421,7 +269,7 @@ const PaymentPage: React.FC = () => {
             <h2 className="text-2xl font-black tracking-[0.3em] text-white uppercase mb-4 animate-pulse">Payment Detected</h2>
             <p className="text-sm font-mono text-neon-cyan tracking-widest uppercase animate-pulse">Authenticating Payment Token...</p>
             <div className="w-64 h-1 bg-gray-800 mx-auto mt-8 rounded-full overflow-hidden">
-              <div className="h-full bg-neon-cyan animate-shimmer" style={{ width: '100%' }}></div>
+              <div className="h-full bg-neon-cyan animate-[shimmer_1s_infinite]" style={{ width: '100%' }}></div>
             </div>
           </div>
         )}
@@ -431,7 +279,7 @@ const PaymentPage: React.FC = () => {
           <div className="text-center" ref={qrScanRef}>
             <div className="relative w-64 h-64 mx-auto mb-8 bg-white p-4 rounded-xl border-4 border-neon-cyan shadow-[0_0_30px_rgba(0,255,255,0.3)]">
               <img src={paymentQr} alt="QR" className="w-full h-full object-contain mix-blend-multiply" />
-              <div className="absolute inset-0 bg-neon-cyan/20 animate-scan border-b-2 border-neon-cyan pointer-events-none rounded-lg"></div>
+              <div className="absolute inset-0 bg-neon-cyan/20 animate-[scan_2s_ease-in-out_infinite] border-b-2 border-neon-cyan pointer-events-none rounded-lg"></div>
             </div>
             <h2 className="text-xl font-black tracking-[0.2em] text-white uppercase mb-2">Reading Payment Data...</h2>
             <p className="text-xs font-mono text-gray-400 tracking-widest uppercase">Verifying Booking ID: {booking.id}</p>
@@ -492,24 +340,11 @@ const PaymentPage: React.FC = () => {
 
         {/* PHASE 6: COMPLETE — auto-redirects after 2 seconds */}
         {phase === 'complete' && (
-          <div className="text-center">
-            <motion.div
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-              className="w-24 h-24 mx-auto mb-8 rounded-full bg-neon-cyan/20 flex items-center justify-center border-2 border-neon-cyan"
-              style={{ boxShadow: '0 0 30px rgba(0, 243, 255, 0.3)' }}
-            >
+          <div className="text-center animate-in fade-in zoom-in duration-700">
+            <div className="w-24 h-24 mx-auto mb-8 rounded-full bg-neon-cyan/20 flex items-center justify-center border-2 border-neon-cyan">
               <Check size={48} className="text-neon-cyan" />
-            </motion.div>
-            <motion.h2
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="text-3xl font-black tracking-[0.2em] uppercase text-white mb-4"
-            >
-              Ready for entry
-            </motion.h2>
+            </div>
+            <h2 className="text-3xl font-black tracking-[0.2em] uppercase text-white mb-4">Ready for entry</h2>
             <p className="text-sm font-mono text-gray-400 tracking-widest uppercase animate-pulse">Redirecting to My Tickets...</p>
           </div>
         )}
@@ -522,7 +357,7 @@ const PaymentPage: React.FC = () => {
       {/* Background stays persistent */}
       <div className="fixed inset-0 bg-gradient-to-br from-black via-gray-900/20 to-black pointer-events-none -z-10"></div>
       
-      {phase === 'checkout' && !showCinematicOverlay && (
+      {phase === 'checkout' && !isPlayingGenerationVideo && (
         <div className="sticky top-0 w-full px-6 py-4 z-50 flex justify-between items-center bg-black/80 backdrop-blur-md border-b border-white/5">
           <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-400 hover:text-white uppercase tracking-[0.2em] text-xs font-bold">
             <ChevronLeft size={16} /> Cancel Payment
@@ -539,20 +374,62 @@ const PaymentPage: React.FC = () => {
         </div>
       )}
 
-      {phase === 'checkout' && !showCinematicOverlay ? renderCheckoutPhase() : null}
+      {phase === 'checkout' && !isPlayingGenerationVideo ? renderCheckoutPhase() : null}
       {phase !== 'checkout' ? renderSequence() : null}
 
       {/* ═══════════════════════════════════════════════════════
-          CINEMATIC LOADING OVERLAY (replaces video)
+          FULLSCREEN VIDEO OVERLAY
+          Renders above everything when isPlayingGenerationVideo is true
           ═══════════════════════════════════════════════════════ */}
-      <AnimatePresence>
-        {showCinematicOverlay && (
-          <CinematicLoadingOverlay
-            onComplete={handleCinematicComplete}
-            movieTitle={movie.title}
+      {isPlayingGenerationVideo && (
+        <div
+          ref={videoOverlayRef}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 99999,
+            backgroundColor: '#000',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'hidden',
+            opacity: isVideoFadingOut ? 0 : 1,
+            transition: 'opacity 0.8s ease-out',
+          }}
+        >
+          <video
+            ref={videoRef}
+            src="/videos/ticket-generation.mp4"
+            autoPlay
+            playsInline
+            onEnded={handleVideoEnded}
+            onError={handleVideoError}
+            style={{
+              width: '100vw',
+              height: '100vh',
+              objectFit: 'cover',
+            }}
           />
-        )}
-      </AnimatePresence>
+          {showAudioOverlay && (
+            <div 
+              className="absolute inset-0 z-[100000] flex items-center justify-center bg-black/80 backdrop-blur-sm cursor-pointer"
+              onClick={() => {
+                setShowAudioOverlay(false);
+                if (videoRef.current) {
+                  videoRef.current.play().then(() => {
+                    console.log('VIDEO PLAY STARTED');
+                    console.log('VIDEO AUDIO ENABLED');
+                  }).catch(err => {
+                    console.error('VIDEO PLAY FAILED', err);
+                  });
+                }
+              }}
+            >
+              <p className="text-white font-black tracking-widest uppercase animate-pulse text-lg">Tap anywhere to continue cinematic playback</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

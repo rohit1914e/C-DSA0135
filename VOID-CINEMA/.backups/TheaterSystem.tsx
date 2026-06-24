@@ -21,17 +21,6 @@ const TheaterSystem: React.FC = () => {
   const clearSelectedSeats = useStore((state) => state.clearSelectedSeats);
 
   const [bookingPhase, setBookingPhase] = useState<BookingPhase>('idle');
-  const [showOptimalOverlay, setShowOptimalOverlay] = useState(false);
-
-  useEffect(() => {
-    if (activePOVSeat?.ratingCategory === 'BEST VIEW' && !isComparing) {
-      setShowOptimalOverlay(true);
-      const timer = setTimeout(() => setShowOptimalOverlay(false), 2000);
-      return () => clearTimeout(timer);
-    } else {
-      setShowOptimalOverlay(false);
-    }
-  }, [activePOVSeat, isComparing]);
 
   const handleReturnToExplore = () => {
     gsap.to('.theater-ui', { opacity: 0, duration: 0.5, onComplete: () => {
@@ -62,10 +51,7 @@ const TheaterSystem: React.FC = () => {
       if (selectedMovie && recommendedSeat) {
         addBooking({
           id: `TKT-${Math.floor(Math.random() * 1000000)}`,
-          bookingReference: `VOID-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
           movieId: selectedMovie.id,
-          theatreId: 't-unknown',
-          theatreName: 'VIRTUAL CINEMA',
           seats: [recommendedSeat.id],
           date: 'TDS-2026',
           time: '22:00',
@@ -304,17 +290,6 @@ const TheaterSystem: React.FC = () => {
               Compare {selectedSeats.length} Seats
             </button>
           )}
-        </div>
-      )}
-
-      {/* Optimal View Overlay */}
-      {showOptimalOverlay && (
-        <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-[100]">
-          <div className="bg-black/60 backdrop-blur-md px-12 py-6 border border-[#ffd700]/50 rounded-xl flex flex-col items-center animate-in fade-in zoom-in duration-500 fade-out duration-500 shadow-[0_0_50px_rgba(255,215,0,0.2)]">
-            <Trophy size={48} className="text-yellow-400 mb-4 drop-shadow-[0_0_15px_rgba(255,215,0,0.8)]" />
-            <h2 className="text-2xl font-black text-white tracking-[0.3em] uppercase mb-1">Optimal Viewing Position</h2>
-            <p className="text-sm font-mono text-yellow-400 tracking-widest uppercase">Premium Cinematic Experience</p>
-          </div>
         </div>
       )}
 

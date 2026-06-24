@@ -24,7 +24,7 @@ const TicketsSystem: React.FC = () => {
                 
                 <div className="flex justify-between items-start mb-6 border-b border-white/10 pb-4">
                   <div>
-                    <div className="text-xs text-cyan-400 font-mono tracking-widest mb-1">{booking.date} • {booking.time}</div>
+                    <div className="text-xs text-cyan-400 font-mono tracking-widest mb-1">{booking.theatreName} • {booking.date} • {booking.time}</div>
                     <h3 className="text-2xl font-black uppercase text-white leading-tight">{movie?.title}</h3>
                   </div>
                   <Ticket size={32} className="text-white/20" />
@@ -43,8 +43,8 @@ const TicketsSystem: React.FC = () => {
                 
                 <div className="border-t border-dashed border-white/20 pt-4 flex justify-between items-end">
                   <div>
-                    <div className="text-[10px] text-white/30 tracking-widest mb-1">TICKET ID</div>
-                    <div className="font-mono text-white/70 tracking-wider text-xs">{booking.id}</div>
+                    <div className="text-[10px] text-white/30 tracking-widest mb-1">BOOKING REF</div>
+                    <div className="font-mono text-neon-purple tracking-wider text-xs">{booking.bookingReference}</div>
                   </div>
                   <QrCode size={48} className="text-white/50" />
                 </div>

@@ -3,6 +3,7 @@ import { Routes, Route, useLocation } from 'react-router-dom';
 import UniverseCanvas from './components/canvas/UniverseCanvas';
 import HomeLayout from './components/pages/HomeLayout';
 import MovieDetailsPage from './components/pages/MovieDetailsPage';
+import TheatreSelectionPage from './components/pages/TheatreSelectionPage';
 import SeatSelectionPage from './components/pages/SeatSelectionPage';
 import PaymentPage from './components/pages/PaymentPage';
 import MyTicketsPage from './components/pages/MyTicketsPage';
@@ -31,6 +32,7 @@ function App() {
           <Route path="/" element={<HomeLayout />} />
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/movie/:movieId" element={<MovieDetailsPage />} />
+          <Route path="/theatres/:movieId" element={<ProtectedRoute><TheatreSelectionPage /></ProtectedRoute>} />
           <Route path="/booking/:movieId" element={<ProtectedRoute><SeatSelectionPage /></ProtectedRoute>} />
           <Route path="/payment/:bookingId" element={<ProtectedRoute><PaymentPage /></ProtectedRoute>} />
           <Route path="/tickets" element={<ProtectedRoute><MyTicketsPage /></ProtectedRoute>} />

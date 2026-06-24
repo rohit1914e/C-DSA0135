@@ -1,23 +1,32 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useStore, MOVIES } from '../../store/useStore';
-import { Booking } from '../../models/Booking';
-import { ChevronLeft, Star, Eye, Ruler, RotateCcw, Trophy, Volume2, VolumeX } from 'lucide-react';
+import { useStore, MOVIES, type Booking } from '../../store/useStore';
+import { ChevronLeft, Star, Eye, Ruler, RotateCcw, Trophy } from 'lucide-react';
 import gsap from 'gsap';
 
-import { Seat } from '../../models/Seat';
+// Seat data generation
+interface SeatData {
+  id: string;
+  row: string;
+  number: number;
+  category: 'VIP' | 'PREMIUM' | 'REGULAR' | 'BUDGET';
+  price: number;
+  qualityScore: number;
+  viewingAngle: number;    // degrees off-center
+  distanceFromScreen: number; // meters
+  isBooked: boolean;
+}
 
 const ROW_LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 const SEATS_PER_ROW = 10;
 
-const generateSeatsMatrix = (): Seat[][] => {
-  const matrix: Seat[][] = [];
+const generateSeats = (): SeatData[] => {
+  const seats: SeatData[] = [];
   const bookedSeats = new Set(['B3', 'C7', 'D5', 'E2', 'F8', 'A6', 'G4', 'H1']);
 
   for (let r = 0; r < ROW_LABELS.length; r++) {
     const row = ROW_LABELS[r];
     const distBase = 4 + r * 2; // A=4m, H=18m
-    const rowSeats: Seat[] = [];
 
     for (let s = 1; s <= SEATS_PER_ROW; s++) {
       const centerOffset = Math.abs(s - 5.5); // 0..4.5
@@ -35,7 +44,7 @@ const generateSeatsMatrix = (): Seat[][] => {
       if (r >= 2 && r <= 4 && s >= 3 && s <= 8) quality += 10;
       quality = Math.max(20, Math.min(100, Math.round(quality)));
 
-      let category: 'VIP' | 'PREMIUM' | 'REGULAR' | 'BUDGET';
+      let category: SeatData['category'];
       if (r >= 2 && r <= 4 && centerOffset <= 2.5) category = 'VIP';
       else if (r >= 1 && r <= 5 && centerOffset <= 3.5) category = 'PREMIUM';
       else if (r <= 1 || r >= 6) category = 'BUDGET';
@@ -43,21 +52,20 @@ const generateSeatsMatrix = (): Seat[][] => {
 
       const priceMap = { VIP: 450, PREMIUM: 350, REGULAR: 250, BUDGET: 180 };
 
-      rowSeats.push(new Seat(
-        `${row}${s}`,
+      seats.push({
+        id: `${row}${s}`,
         row,
-        s,
+        number: s,
         category,
-        priceMap[category],
-        quality,
-        Math.round(angle),
-        distBase,
-        bookedSeats.has(`${row}${s}`)
-      ));
+        price: priceMap[category],
+        qualityScore: quality,
+        viewingAngle: Math.round(angle),
+        distanceFromScreen: distBase,
+        isBooked: bookedSeats.has(`${row}${s}`),
+      });
     }
-    matrix.push(rowSeats);
   }
-  return matrix;
+  return seats;
 };
 
 const categoryColors: Record<string, string> = {
@@ -67,25 +75,18 @@ const categoryColors: Record<string, string> = {
   BUDGET: '#6b7280',
 };
 
-// YouTube Trailer video IDs for each movie
-const TRAILER_IDS: Record<string, string> = {
-  'interstellar': 'zSWdZVtXT7E',
-  'spiderman-bnd': '8TZMtslA3UY',
-  'kanguva': 'ajnCMSC4VPo',
-  'obsession': 'gMC8kkwbIQQ',
-  'backrooms': '0HjdiohVOik',
-  'michael': '3zOLzsbOleM',
-};
-
-// Build YouTube embed URL with audio control
-const buildTrailerUrl = (movieId: string, muted: boolean): string => {
-  const videoId = TRAILER_IDS[movieId] || TRAILER_IDS['interstellar'];
-  const muteParam = muted ? 1 : 0;
-  return `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=${muteParam}&loop=1&controls=1&showinfo=0&rel=0&modestbranding=1&enablejsapi=1&playlist=${videoId}`;
+// YouTube Trailer URLs for each movie
+const TRAILER_URLS: Record<string, string> = {
+  'interstellar': 'https://www.youtube.com/embed/zSWdZVtXT7E?autoplay=1&mute=1&loop=1&controls=0&showinfo=0&rel=0&modestbranding=1&playlist=zSWdZVtXT7E',
+  'spiderman-bnd': 'https://www.youtube.com/embed/8TZMtslA3UY?autoplay=1&mute=1&loop=1&controls=0&showinfo=0&rel=0&modestbranding=1&playlist=8TZMtslA3UY',
+  'kanguva': 'https://www.youtube.com/embed/ajnCMSC4VPo?autoplay=1&mute=1&loop=1&controls=0&showinfo=0&rel=0&modestbranding=1&playlist=ajnCMSC4VPo',
+  'obsession': 'https://www.youtube.com/embed/gMC8kkwbIQQ?autoplay=1&mute=1&loop=1&controls=0&showinfo=0&rel=0&modestbranding=1&playlist=gMC8kkwbIQQ',
+  'backrooms': 'https://www.youtube.com/embed/0HjdiohVOik?autoplay=1&mute=1&loop=1&controls=0&showinfo=0&rel=0&modestbranding=1&playlist=0HjdiohVOik',
+  'michael': 'https://www.youtube.com/embed/3zOLzsbOleM?autoplay=1&mute=1&loop=1&controls=0&showinfo=0&rel=0&modestbranding=1&playlist=3zOLzsbOleM',
 };
 
 // Camera parameters calculator based on seat position
-const getCameraParams = (seat: Seat) => {
+const getCameraParams = (seat: SeatData) => {
   const rowIndex = ROW_LABELS.indexOf(seat.row); // 0=A(front) to 7=H(back)
   const colOffset = seat.number - 5.5; // -4.5 to 4.5
   return {
@@ -98,15 +99,12 @@ const getCameraParams = (seat: Seat) => {
 };
 
 // Cinema Theater POV Simulation with live YouTube trailer
-const TheaterPOV: React.FC<{ seat: Seat | null; movieId: string; movieTitle: string }> = ({ seat, movieId, movieTitle }) => {
+const TheaterPOV: React.FC<{ seat: SeatData | null; movieId: string; movieTitle: string }> = ({ seat, movieId, movieTitle }) => {
   const screenContainerRef = useRef<HTMLDivElement>(null);
   const screenRef = useRef<HTMLDivElement>(null);
   const cameraState = useRef({ perspective: 500, rotateY: 0, rotateX: 0, translateZ: 0, scale: 1 });
 
-  // Audio state: starts muted (browser autoplay policy), user can unmute
-  const [isMuted, setIsMuted] = useState(true);
-  const [showUnmuteOverlay, setShowUnmuteOverlay] = useState(true);
-  const trailerUrl = buildTrailerUrl(movieId, isMuted);
+  const trailerUrl = TRAILER_URLS[movieId] || TRAILER_URLS['interstellar'];
 
   // GSAP camera animation when seat changes — video keeps playing
   useEffect(() => {
@@ -200,41 +198,13 @@ const TheaterPOV: React.FC<{ seat: Seat | null; movieId: string; movieTitle: str
 
             {/* YouTube Trailer — persists across seat changes so playback is never interrupted */}
             <iframe
-              key={`${movieId}-${isMuted ? 'muted' : 'unmuted'}`}
+              key={movieId}
               src={trailerUrl}
               className="w-full h-full rounded-sm relative z-10"
-              style={{ border: 'none' }}
+              style={{ border: 'none', pointerEvents: 'none' }}
               allow="autoplay; encrypted-media; accelerometer; gyroscope"
               title={`${movieTitle} Trailer`}
-              allowFullScreen
             />
-
-            {/* Tap to enable audio overlay */}
-            {showUnmuteOverlay && (
-              <div
-                className="absolute inset-0 z-30 flex items-end justify-center pb-4 cursor-pointer"
-                onClick={() => {
-                  setIsMuted(false);
-                  setShowUnmuteOverlay(false);
-                }}
-              >
-                <div className="flex items-center gap-2 bg-black/80 backdrop-blur-md px-4 py-2 rounded-full border border-neon-cyan/30" style={{ boxShadow: '0 0 15px rgba(0, 243, 255, 0.15)' }}>
-                  <VolumeX size={14} className="text-neon-cyan" />
-                  <span className="text-[10px] font-mono tracking-[0.2em] text-neon-cyan uppercase">Tap to enable audio</span>
-                </div>
-              </div>
-            )}
-
-            {/* Mute/Unmute toggle (shown after overlay dismissed) */}
-            {!showUnmuteOverlay && (
-              <button
-                className="absolute bottom-2 right-2 z-30 w-8 h-8 rounded-full bg-black/70 backdrop-blur-sm border border-white/10 flex items-center justify-center hover:bg-black/90 transition-colors"
-                onClick={() => setIsMuted(!isMuted)}
-                title={isMuted ? 'Unmute' : 'Mute'}
-              >
-                {isMuted ? <VolumeX size={14} className="text-white/60" /> : <Volume2 size={14} className="text-neon-cyan" />}
-              </button>
-            )}
 
             {/* Screen Border Frame */}
             <div className="absolute inset-0 border-2 border-white/5 rounded-sm z-20 pointer-events-none" style={{ boxShadow: 'inset 0 0 30px rgba(0,0,0,0.5)' }}></div>
@@ -293,14 +263,11 @@ const SeatSelectionPage: React.FC = () => {
   const { movieId } = useParams<{ movieId: string }>();
   const navigate = useNavigate();
   const addBooking = useStore(state => state.addBooking);
-  const selectedTheatre = useStore(state => state.selectedTheatre);
-  const selectedDate = useStore(state => state.selectedDate);
-  const selectedTime = useStore(state => state.selectedTime);
 
   const movie = MOVIES.find(m => m.id === movieId);
-  const seatsMatrix = useMemo(() => generateSeatsMatrix(), []);
+  const seats = useMemo(() => generateSeats(), []);
   const [selectedSeatIds, setSelectedSeatIds] = useState<Set<string>>(new Set());
-  const [previewSeat, setPreviewSeat] = useState<Seat | null>(null);
+  const [previewSeat, setPreviewSeat] = useState<SeatData | null>(null);
 
   if (!movie) {
     return (
@@ -315,7 +282,7 @@ const SeatSelectionPage: React.FC = () => {
     );
   }
 
-  const toggleSeat = (seat: Seat) => {
+  const toggleSeat = (seat: SeatData) => {
     if (seat.isBooked) return;
     const next = new Set(selectedSeatIds);
     if (next.has(seat.id)) {
@@ -327,45 +294,19 @@ const SeatSelectionPage: React.FC = () => {
     setPreviewSeat(seat); // Always update preview to last clicked
   };
 
-  const recommendBestSeat = () => {
-    // Linear Search O(n) Time Complexity
-    let bestSeat: Seat | null = null;
-    let highestScore = -1;
-
-    for (let r = 0; r < seatsMatrix.length; r++) {
-      for (let c = 0; c < seatsMatrix[r].length; c++) {
-        const seat = seatsMatrix[r][c];
-        if (!seat.isBooked && seat.qualityScore > highestScore) {
-          highestScore = seat.qualityScore;
-          bestSeat = seat;
-        }
-      }
-    }
-
-    if (bestSeat) {
-      setSelectedSeatIds(new Set([bestSeat.id]));
-      setPreviewSeat(bestSeat);
-    }
-  };
-
-  const selectedSeatsData = seatsMatrix.flat().filter(s => selectedSeatIds.has(s.id));
+  const selectedSeatsData = seats.filter(s => selectedSeatIds.has(s.id));
   const totalPrice = selectedSeatsData.reduce((sum, s) => sum + s.price, 0);
 
   const handleConfirmBooking = () => {
     if (selectedSeatsData.length === 0) return;
 
     const bookingId = `BK-${Date.now()}`;
-    const bookingRef = `VOID-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
-    
     const booking: Booking = {
       id: bookingId,
-      bookingReference: bookingRef,
       movieId: movie.id,
-      theatreId: selectedTheatre?.id || 't-unknown',
-      theatreName: selectedTheatre?.name || 'Unknown Theatre',
       seats: selectedSeatsData.map(s => s.id),
-      date: selectedDate || new Date().toISOString().split('T')[0],
-      time: selectedTime || '7:30 PM',
+      date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+      time: '7:30 PM',
       status: 'upcoming' as const,
       paymentStatus: 'pending',
       totalAmount: totalPrice + 50, // Including hypothetical convenience fee
@@ -406,41 +347,19 @@ const SeatSelectionPage: React.FC = () => {
         {/* Left: Seat Map (40%) */}
         <div className="xl:col-span-5 flex flex-col gap-6">
           
-          {/* Booking Metadata Header */}
-          <div className="glass-panel-neon p-4 text-center rounded-lg border border-white/10 bg-black/40">
-            <h2 className="text-xl font-black uppercase text-white tracking-widest mb-2">{movie.title}</h2>
-            <div className="text-[11px] font-mono text-neon-cyan tracking-[0.2em] uppercase">
-              {selectedTheatre?.name || 'UNKNOWN THEATRE'} <span className="text-white/30 mx-2">•</span> {selectedDate || 'TODAY'} <span className="text-white/30 mx-2">•</span> {selectedTime || 'N/A'}
-            </div>
-          </div>
-
           {/* Screen Indicator */}
-          <div className="text-center mt-2">
+          <div className="text-center">
             <div className="w-3/4 mx-auto h-1.5 rounded-full bg-gradient-to-r from-transparent via-neon-cyan to-transparent mb-2"></div>
             <p className="text-[10px] font-mono text-gray-500 tracking-[0.4em] uppercase">Screen</p>
           </div>
 
-          {/* Action Header */}
-          <div className="flex justify-between items-end mb-4 px-2">
-            <div>
-              <h3 className="text-white font-black uppercase tracking-widest text-lg">Select Seats</h3>
-              <p className="text-xs font-mono text-gray-500 tracking-widest mt-1">MAX 10 TICKETS PER TRANSACTION</p>
-            </div>
-            <button 
-              onClick={recommendBestSeat}
-              className="px-4 py-2 bg-neon-cyan/10 border border-neon-cyan text-neon-cyan hover:bg-neon-cyan hover:text-black transition-colors font-mono text-xs font-bold tracking-widest flex items-center gap-2"
-            >
-              <Star size={14} /> RECOMMEND BEST SEAT
-            </button>
-          </div>
-
           {/* Seat Grid */}
           <div className="flex flex-col items-center gap-2 py-4">
-            {seatsMatrix.map((rowSeats, rIdx) => {
-              const rowLabel = ROW_LABELS[rIdx];
+            {ROW_LABELS.map(row => {
+              const rowSeats = seats.filter(s => s.row === row);
               return (
-                <div key={rowLabel} className="flex items-center gap-1">
-                  <span className="w-6 text-right text-xs font-mono text-gray-500 mr-2">{rowLabel}</span>
+                <div key={row} className="flex items-center gap-1">
+                  <span className="w-6 text-right text-xs font-mono text-gray-500 mr-2">{row}</span>
                   {rowSeats.map(seat => {
                     const isSelected = selectedSeatIds.has(seat.id);
                     const isPreviewing = previewSeat?.id === seat.id;
@@ -473,7 +392,7 @@ const SeatSelectionPage: React.FC = () => {
                       </button>
                     );
                   })}
-                  <span className="w-6 text-left text-xs font-mono text-gray-500 ml-2">{rowLabel}</span>
+                  <span className="w-6 text-left text-xs font-mono text-gray-500 ml-2">{row}</span>
                 </div>
               );
             })}
